@@ -2,6 +2,7 @@ import os
 import json
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 # 判斷是在 Vercel 還是本地
 if os.path.exists('serviceAccountKey.json'):
@@ -21,6 +22,7 @@ import random
 
 app = Flask(__name__)
 
+
 @app.route("/")
 def index():
     link = "<h1>歡迎進入許芷嫙的網站首頁</h1>"
@@ -31,7 +33,21 @@ def index():
     link += "<a href=/account>POST傳值(帳號密碼)</a><hr>"
     link += "<a href=/cup>擲茭</a><hr>"
     link += "<a href=/math>數學運算</a><hr>"
+    link += "<a href=/read>讀取Firestore資料(根據lab遞減排序,取前4)</a>"
     return link
+
+@app.route("/read")
+def read():
+    db = firestore.client()
+
+    Temp = ""
+    collection_ref = db.collection("靜宜資管2026a")  
+    docs = collection_ref.order_by("lab" , direction=firestore.Query.DESCENDING).limit(4).get()  
+    
+    for doc in docs:
+        Temp += str(doc.to_dict()) + "<br>"
+
+    return Temp
 
 @app.route("/mis")
 def course():
@@ -117,5 +133,6 @@ def math():
         return result
     else:
         return render_template("math.html")
+
 if __name__ == "__main__":
     app.run()
