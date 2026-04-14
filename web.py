@@ -34,7 +34,31 @@ def index():
     link += "<a href=/cup>擲茭</a><hr>"
     link += "<a href=/math>數學運算</a><hr>"
     link += "<a href=/read>讀取Firestore資料(根據lab遞減排序,取前4)</a>"
+    link += "<a href=/search>讀取Firestore資料(根據lab遞減排序,取前4)</a>"
     return link
+
+@app.route("/search", methods=["GET", "POST"])
+def search():
+    if request.method == "POST":
+        # 接收使用者從表單輸入的關鍵字
+        keyword = request.form.get("keyword")
+        
+        db = firestore.client()
+        collection_ref = db.collection("靜宜資管2026a")
+        docs = collection_ref.get()
+        
+        results = []
+        for doc in docs:
+            user = doc.to_dict()
+            # 如果名字包含關鍵字，就加入結果清單
+            if keyword in user.get("name", ""):
+                results.append(user)
+        
+        # 把結果傳給 HTML 顯示
+        return render_template("search.html", results=results, keyword=keyword)
+    
+    # 如果是直接打開網頁 (GET)，就顯示空的搜尋頁面
+    return render_template("search.html")
 
 @app.route("/read")
 def read():
