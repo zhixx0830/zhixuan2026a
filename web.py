@@ -1,3 +1,20 @@
+import os
+import json
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+# 判斷是在 Vercel 還是本地
+if os.path.exists('serviceAccountKey.json'):
+    # 本地環境：讀取檔案
+    cred = credentials.Certificate('serviceAccountKey.json')
+else:
+    # 雲端環境：從環境變數讀取 JSON 字串
+    firebase_config = os.getenv('FIREBASE_CONFIG')
+    cred_dict = json.loads(firebase_config)
+    cred = credentials.Certificate(cred_dict)
+
+firebase_admin.initialize_app(cred)
+
 from flask import Flask, render_template, request
 from datetime import datetime
 import random
@@ -13,6 +30,7 @@ def index():
     link += "<a href=/welcome?u=芷嫙&dep=靜宜資管>GET傳值</a><hr>"
     link += "<a href=/account>POST傳值(帳號密碼)</a><hr>"
     link += "<a href=/cup>擲茭</a><hr>"
+    link += "<a href=/math>數學運算</a><hr>"
     return link
 
 @app.route("/mis")
@@ -72,5 +90,32 @@ def cup():
         
     return render_template('cup.html', result=result)
 
+@app.route("/math", methods=["GET", "POST"])
+def math():
+    if request.method == "POST":
+        x = request.form["x"]
+        opt = request.form["opt"]
+        y = request.form["y"]
+
+        x = int(x)
+        y = int(y)
+
+        if opt == "/" and y == 0:
+            return "除數不能為0"
+
+        else:
+            if opt == "+":
+                Result = x + y 
+            elif opt == "-":
+                Result = x - y
+            elif opt == "*":
+                Result = x * y
+            elif opt == "/":
+                Result = x / y
+
+        result = f"{x} {opt} {y} 的結果是 {Result}"
+        return result
+    else:
+        return render_template("math.html")
 if __name__ == "__main__":
     app.run()
