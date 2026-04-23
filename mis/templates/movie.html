@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>即將上映電影</title>
+</head>
+<body>
+    <h1>開眼即將上映電影</h1>
+    <a href="/">回到首頁</a>
+    <hr>
+    <ul>
+        {% for movie in movies %}
+            <li>
+                <a href="{{ movie.link }}" target="_blank">{{ movie.title }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
