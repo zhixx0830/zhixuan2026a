@@ -221,25 +221,29 @@ def movie2():
     doc_ref.set(doc)    
   return "近期上映電影已爬蟲及存檔完畢，網站最近更新日期為：" + lastUpdate 
 
-
 @app.route("/searchQ", methods=["POST","GET"])
 def searchQ():
     if request.method == "POST":
         MovieTitle = request.form["MovieTitle"]
         info = ""
-        db = firestore.client()     
-        collection_ref = db.collection("電影")
+        db = firestore.client()      
+        collection_ref = db.collection("電影2A")
         docs = collection_ref.order_by("showDate").get()
+        
         for doc in docs:
-            if MovieTitle in doc.to_dict()["title"]: 
-                info += "片名：" + doc.to_dict()["title"] + "<br>" 
-                info += "影片介紹：" + doc.to_dict()["hyperlink"] + "<br>"
-                info += "片長：" + doc.to_dict()["showLength"] + " 分鐘<br>" 
-                info += "上映日期：" + doc.to_dict()["showDate"] + "<br><br>"           
+            movie = doc.to_dict()
+            if MovieTitle in movie.get("title", ""): 
+                info += "片名：" + movie.get("title", "") + "<br>" 
+                info += "影片介紹：" + movie.get("hyperlink", "") + "<br>"
+                info += "片長：" + movie.get("showLength", "") + " 分鐘<br>" 
+                info += "上映日期：" + movie.get("showDate", "") + "<br><br>"            
+        
+        if info == "":
+            return "目前找不到包含「" + MovieTitle + "」的電影喔！<br><a href='/searchQ'>重新查詢</a>"
+            
         return info
     else:  
         return render_template("searchQ.html")
-
 
 if __name__ == "__main__":
     app.run()
