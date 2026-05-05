@@ -41,6 +41,7 @@ def index():
     link += "<a href=/movie>查詢即將上映電影</a><hr>"
     link += "<a href=/movie2>讀取開眼電影即將上映影片</a><hr>"
     link += "<a href=/searchQ>關鍵字電影查詢</a><hr>"
+    link += "<a href=/road>請輸入欲查詢的路名</a><hr>"
     return link
 
 @app.route("/search", methods=["GET", "POST"])
@@ -244,6 +245,18 @@ def searchQ():
         return info
     else:  
         return render_template("searchQ.html")
+
+@app.route("/road", methods=["POST","GET"])
+def road():
+    R = ""
+    url = "https://datacenter.taichung.gov.tw/swagger/OpenData/a1b899c0-511f-4e3d-b22b-814982a97e41"
+    Data = requests.get(url)
+
+    JsonData = json.loads(Data.text)
+    for item in JsonData:
+        R += item["路口名稱"] + ",總共發生" + item["總件數"] + "件事故"
+    return R
+
 
 if __name__ == "__main__":
     app.run()
