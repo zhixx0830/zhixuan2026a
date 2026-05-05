@@ -41,7 +41,8 @@ def index():
     link += "<a href=/movie>查詢即將上映電影</a><hr>"
     link += "<a href=/movie2>讀取開眼電影即將上映影片</a><hr>"
     link += "<a href=/searchQ>關鍵字電影查詢</a><hr>"
-    link += "<a href=/road>請輸入欲查詢的路名</a><hr>"
+    link += "<a href=/road>台中市十大肇事路口</a><hr>"
+    link += "<a href=/weather>天氣查詢系統</a><hr>"
     return link
 
 @app.route("/search", methods=["GET", "POST"])
@@ -248,15 +249,57 @@ def searchQ():
 
 @app.route("/road", methods=["POST","GET"])
 def road():
-    R = ""
+    R = "<h2>台中市十大肇事路口</h2>" 
     url = "https://datacenter.taichung.gov.tw/swagger/OpenData/a1b899c0-511f-4e3d-b22b-814982a97e41"
-    Data = requests.get(url)
+    
+    # 升級版的終極偽裝標頭
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Connection": "keep-alive"
+    }
 
-    JsonData = json.loads(Data.text)
-    for item in JsonData:
-        R += item["路口名稱"] + ",總共發生" + item["總件數"] + "件事故"
-    return R
+    try:
+        # 加上 timeout=10，避免程式卡住等太久
+        Data = requests.get(url, verify=False, headers=headers, timeout=10)
+        JsonData = json.loads(Data.text)
+        
+        for item in JsonData:
+            R += f"{item['路口名稱']}，總共發生 {item['總件數']} 件事故 <br>"
+            
+    except Exception as e:
+        return f"讀取台中市開放資料失敗，錯誤原因：{e}"
 
+    return R + "<br><br><a href='/'>回首頁</a>"
+
+@app.route("/weather", methods=["GET", "POST"])
+def weather():
+    if request.method == "POST":
+        city = request.form["city"]
+
+        search_city = city.replace("台", "臺")
+
+        url = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=rdec-key-123-45678-011121314&format=JSON&locationName=" + search_city
+        try:
+            Data = requests.get(url, verify=False)
+            JsonData = json.loads(Data.text)
+
+            Weather = JsonData["records"]["location"][0]["weatherElement"][0]["time"][0]["parameter"]["parameterName"]
+            Rain = JsonData["records"]["location"][0]["weatherElement"][1]["time"][0]["parameter"]["parameterName"]
+
+            info = f"<h3>{city} 目前天氣預報</h3>"
+            info += f"天氣狀況：{Weather} <br>"
+            info += f"降雨機率：{Rain}% <br><br>"
+            info += "<a href='/weather'>重新查詢</a> | <a href='/'>回首頁</a>"
+            
+            return info
+            
+        except Exception as e:
+            return f"查詢失敗，找不到「{city}」的天氣資料，請確認是否有加上「市」或「縣」（例如：台中市、花蓮縣）。<br><br><a href='/weather'>重新查詢</a>"
+            
+    else:
+        return render_template("weather.html")
 
 if __name__ == "__main__":
     app.run()

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>天氣查詢</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; margin: 40px; }
+        .box { background-color: #e3f2fd; padding: 20px; border-radius: 8px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <h2>🌤️ 縣市天氣查詢系統</h2>
+    
+    <div class="box">
+        <!-- 這裡的 action="/weather" 會對應到 web.py 裡面的 @app.route("/weather") -->
+        <form action="/weather" method="POST">
+            請輸入欲查詢的縣市 (例如：台中市、台北市)：<br><br>
+            <input type="text" name="city" placeholder="請輸入完整縣市名稱" required>
+            <input type="submit" value="開始查詢">
+        </form>
+    </div>
+
+    <br><br>
+    <a href="/">回首頁</a>
+</body>
+</html>
