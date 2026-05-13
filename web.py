@@ -378,44 +378,79 @@ def webhook():
         info = "我是許芷嫙設計的電影聊天機器人,您選擇的電影分級是：" + rate
     return make_response(jsonify({"fulfillmentText": info}))
 
-@app.route("/webhook2", methods=["POST"])
-def webhook2():
-    # 建立 request 物件
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    # 1. 取得 Dialogflow 的請求內容
     req = request.get_json(force=True)
-    
-    # 從 json 中取得 queryResult 內容
     query_result = req.get("queryResult")
     action = query_result.get("action")
-    
-    if action == "rateChoice":
-        # 1. 取得 Dialogflow 傳來的分級參數 (例如: 普遍級)
-        rate = query_result.get("parameters").get("rate")
-        
-        # 2. 到 Firebase 查詢符合該分級的電影
-        # 關鍵修正：集合名稱必須與你 /rate 路由中的 "本週新片含分級" 一致
-        db = firestore.client()
-        collection_ref = db.collection("本週新片含分級")
-        docs = collection_ref.where("rate", "==", rate).get()
-        
-        movie_titles = []
-        for doc in docs:
-            movie_data = doc.to_dict()
-            # 取得 "title" 欄位的值
-            t = movie_data.get("title")
-            if t:
-                movie_titles.append(t)
-        
-        # 3. 組合回覆訊息 (包含你的姓名與搜尋結果)
-        if movie_titles:
-            # 將所有片名用「、」連接起來
-            titles_str = "、".join(movie_titles)
-            info = f"我是許芷嫙設計的電影聊天機器人，您選擇的分級是 {rate}，本週上映符合的分級電影有：{titles_str}"
-        else:
-            info = f"我是許芷嫙設計的電影聊天機器人，目前資料庫找不到 {rate} 級的電影喔！"
-            
-        return make_response(jsonify({"fulfillmentText": info}))
+   
+    # 初始化回傳訊息開頭
+    info = "我是陳沂蔓設計的電影聊天機器人。\n"
+    db = firestore.client()
 
-    return make_response(jsonify({"fulfillmentText": "抱歉，我不清楚您的請求。"}))
+    # --- 動作 A：根據「分級」查詢電影 ---
+    if action == "rateChoice":
+        rate = query_result.get("parameters").get("rate")
+        info += f"您選擇查詢的分級是：{rate}\n\n"
+       
+        # 搜尋資料庫中符合該分級的電影
+        collection_ref = db.collection("本週新片含分級")
+        # 使用 where 進行精準篩選
+        docs = collection_ref.where(filter=FieldFilter("rate", "==", rate)).get()
+       
+        found = False
+        for doc in docs:
+            found = True
+            m = doc.to_dict()
+            info += f"🎬【{m['title']}】\n"
+            info += f"📅 上映日期：{m['showDate']}\n"
+            info += f"🔗 介紹：{m['hyperlink']}\n\n"
+       
+        if not found:
+            info += f"很抱歉，目前找不到標記為「{rate}」的新片喔。"
+
+    # --- 動作 B：根據「關鍵字」查詢特定欄位 (片名/分級/日期) ---
+    elif action == "MovieDetail":
+        params = query_result.get("parameters")
+        question = params.get("filmq")  # 使用者想查的欄位，如：片名、分級
+        keyword = params.get("any")     # 使用者輸入的關鍵字，如：超人
+       
+        info += f"您要查詢電影的 {question}，關鍵字是：{keyword}\n\n"
+
+        # 欄位映射對照表
+        mapping = {
+            "片名": "title",
+            "分級": "rate",
+            "上映日期": "showDate",
+            "介紹": "introduce"
+        }
+        target_field = mapping.get(question, "title")
+
+        collection_ref = db.collection("本週新片含分級")
+        docs = collection_ref.get()
+       
+        found = False
+        for doc in docs:
+            m = doc.to_dict()
+            # 模糊搜尋：關鍵字是否出現在該欄位中
+            if keyword in str(m.get(target_field, "")):
+                found = True
+                info += f"🎬 片名：{m['title']}\n"
+                info += f"🎥 分級：{m['rate']}\n"
+                info += f"⏳ 片長：{m['showLength']} 分鐘\n"
+                info += f"📅 上映日期：{m['showDate']}\n"
+                info += f"🔗 介紹網址：{m['hyperlink']}\n\n"
+       
+        if not found:
+            info += f"在【{question}】中找不到包含「{keyword}」的電影。"
+
+    # 若 action 都不符合
+    else:
+        info += "我不太明白您的意思，您可以試試說「我想查普遍級電影」或「查詢片名有超人的電影」。"
+
+    # 4. 回傳 JSON 給 Dialogflow
+    return make_response(jsonify({"fulfillmentText": info}))
 
 
 if __name__ == "__main__":
