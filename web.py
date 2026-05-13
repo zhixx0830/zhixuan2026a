@@ -380,39 +380,43 @@ def webhook():
 
 @app.route("/webhook2", methods=["POST"])
 def webhook2():
-    # 建立 request 物件並取得 JSON 資料
+    # 建立 request 物件
     req = request.get_json(force=True)
     
-    # 取得 Dialogflow 的 Action 名稱
-    action = req.get("queryResult").get("action")
+    # 從 json 中取得 queryResult 內容
+    query_result = req.get("queryResult")
+    action = query_result.get("action")
     
     if action == "rateChoice":
-        # 1. 從 Dialogflow 參數中取得電影分級 (例如: G)
-        rate = req.get("queryResult").get("parameters").get("rate")
+        # 1. 取得 Dialogflow 傳來的分級參數 (例如: G)
+        # 請確認 Dialogflow 中的參數名稱是否為 "rate"
+        rate = query_result.get("parameters").get("rate")
         
-        # 2. 查詢 Firebase 資料庫
-        # 假設你的集合叫 movies，欄位有 rate 和 title
-        movie_collection = db.collection("movies")
-        docs = movie_collection.where("rate", "==", rate).stream()
+        # 2. 到 Firebase 查詢符合該分級的電影
+        # 注意：集合名稱 "movies" 與欄位名稱 "rate" 必須與 Firestore 一模一樣
+        docs = db.collection("movies").where("rate", "==", rate).get()
         
-        movie_list = []
+        movie_titles = []
         for doc in docs:
-            movie_list.append(doc.to_dict().get("title"))
+            movie_data = doc.to_dict()
+            # 取得 "title" 欄位的值，若無則回傳空字串
+            t = movie_data.get("title")
+            if t:
+                movie_titles.append(t)
         
-        # 3. 處理查詢結果
-        if movie_list:
-            titles_str = "、".join(movie_list)
-            info = f"我是許芷嫙設計的電影聊天機器人，為您找到本週上映的 {rate} 級電影有：{titles_str}"
+        # 3. 組合回覆訊息
+        if movie_titles:
+            # 將所有片名用「、」連接起來
+            titles_str = "、".join(movie_titles)
+            info = f"我是許芷嫙設計的電影聊天機器人，您選擇的分級是 {rate}，符合的電影有：{titles_str}"
         else:
-            info = f"我是許芷嫙設計的電影聊天機器人，目前資料庫中沒有找到 {rate} 級的電影喔！"
+            info = f"我是許芷嫙設計的電影聊天機器人，目前資料庫找不到 {rate} 級的電影。"
             
         return make_response(jsonify({"fulfillmentText": info}))
 
-    # 如果不是指定的 action，回傳預設訊息
     return make_response(jsonify({"fulfillmentText": "抱歉，我不清楚您的請求。"}))
 
-if __name__ == "__main__":
-    app.run(debug=True)
+
 
 if __name__ == "__main__":
     app.run()
