@@ -388,34 +388,34 @@ def webhook2():
     action = query_result.get("action")
     
     if action == "rateChoice":
-        # 1. 取得 Dialogflow 傳來的分級參數 (例如: G)
-        # 請確認 Dialogflow 中的參數名稱是否為 "rate"
+        # 1. 取得 Dialogflow 傳來的分級參數 (例如: 普遍級)
         rate = query_result.get("parameters").get("rate")
         
         # 2. 到 Firebase 查詢符合該分級的電影
-        # 注意：集合名稱 "movies" 與欄位名稱 "rate" 必須與 Firestore 一模一樣
-        docs = db.collection("movies").where("rate", "==", rate).get()
+        # 關鍵修正：集合名稱必須與你 /rate 路由中的 "本週新片含分級" 一致
+        db = firestore.client()
+        collection_ref = db.collection("本週新片含分級")
+        docs = collection_ref.where("rate", "==", rate).get()
         
         movie_titles = []
         for doc in docs:
             movie_data = doc.to_dict()
-            # 取得 "title" 欄位的值，若無則回傳空字串
+            # 取得 "title" 欄位的值
             t = movie_data.get("title")
             if t:
                 movie_titles.append(t)
         
-        # 3. 組合回覆訊息
+        # 3. 組合回覆訊息 (包含你的姓名與搜尋結果)
         if movie_titles:
             # 將所有片名用「、」連接起來
             titles_str = "、".join(movie_titles)
-            info = f"我是許芷嫙設計的電影聊天機器人，您選擇的分級是 {rate}，符合的電影有：{titles_str}"
+            info = f"我是許芷嫙設計的電影聊天機器人，您選擇的分級是 {rate}，本週上映符合的分級電影有：{titles_str}"
         else:
-            info = f"我是許芷嫙設計的電影聊天機器人，目前資料庫找不到 {rate} 級的電影。"
+            info = f"我是許芷嫙設計的電影聊天機器人，目前資料庫找不到 {rate} 級的電影喔！"
             
         return make_response(jsonify({"fulfillmentText": info}))
 
     return make_response(jsonify({"fulfillmentText": "抱歉，我不清楚您的請求。"}))
-
 
 
 if __name__ == "__main__":
