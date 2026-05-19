@@ -439,6 +439,9 @@ def webhook():
     # 4. 回傳 JSON 給 Dialogflow
     return make_response(jsonify({"fulfillmentText": info}))
 
+@app.route("/demo")
+def demo():
+    return render_template("demo.html")
 
 if __name__ == "__main__":
     app.run()
