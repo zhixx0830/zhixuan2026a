@@ -373,7 +373,7 @@ def webhook():
     action = query_result.get("action")
    
     # 初始化回傳訊息開頭
-    info = "我是陳沂蔓設計的電影聊天機器人。\n"
+    info = "我是許芷嫙設計的電影聊天機器人。\n"
     db = firestore.client()
 
     # --- 動作 A：根據「分級」查詢電影 ---
