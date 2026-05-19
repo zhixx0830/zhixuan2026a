@@ -45,6 +45,7 @@ def index():
     link += "<a href=/road>台中市十大肇事路口</a><hr>"
     link += "<a href=/weather>天氣查詢系統</a><hr>"
     link += "<a href=/rate>本週新片進DB</a><hr>"
+    link += "<a href=/demo>聊天機器人</a><hr>"
     return link
 
 @app.route("/search", methods=["GET", "POST"])
