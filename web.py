@@ -7,6 +7,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from flask import Flask, render_template, request, make_response, jsonify
+from google import genai
 
 # 判斷是在 Vercel 還是本地
 if os.path.exists('serviceAccountKey.json'):
@@ -26,6 +27,7 @@ import random
 
 app = Flask(__name__)
 
+client = genai.Client()
 
 @app.route("/")
 def index():
@@ -443,6 +445,18 @@ def webhook():
 @app.route("/demo")
 def demo():
     return render_template("demo.html")
+
+@app.route("/AI")
+def AI():
+    # 每次使用者拜訪該路徑時，直接使用全域的 client 呼叫模型
+    response = client.models.generate_content(
+        model='gemini-3.5-flash',
+        contents='我想查詢靜宜大學資管系的評價？',
+    )
+    
+    # 回傳生成的文字
+    return response.text
+
 
 if __name__ == "__main__":
     app.run()
