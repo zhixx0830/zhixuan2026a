@@ -373,49 +373,70 @@ def rate():
 
 # ... (前面 MovieDetail 的程式碼保持不變) ...
         
-        if not found:
-            info += f"在【{question}】中找不到包含「{keyword}」的電影。"
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    # build a request object
+    req = request.get_json(force=True)
+    # fetch queryResult from json
+    action =  req["queryResult"]["action"]
+    #msg =  req["queryResult"]["queryText"]
+    #info = "我是楊子青設計的電影聊天機器人, 動作：" + action + "； 查詢內容：" + msg
+    if (action == "rateChoice"):
+        rate =  req["queryResult"]["parameters"]["rate"]
+        info = "我是許芷嫙設計的電影聊天機器人,您選擇的電影分級是：" + rate + "，相關電影：\n"
 
-    # 🛑 修正一：把 input.unknown 的 elif 移到 else 的前面
-    elif action == "input.unknown":
-        # 加入 try...except 來防止 AI 呼叫失敗時整個機器人當機
-        try:
-            ai_config = types.GenerateContentConfig(
-                max_output_tokens = 500
-            )
+        db = firestore.client()
+        collection_ref = db.collection("本週新片含分級")
+        docs = collection_ref.get()
+        result = ""
+        for doc in docs:
+            dict = doc.to_dict()
+            if rate in dict["rate"]:
+                result += "片名：" + dict["title"] + ";\n"
+                result += "連結：" + dict["hyperlink"] + "\n\n"
 
-            response = client.models.generate_content(
-                model = 'gemini-3.5-flash',
-                contents = req["queryResult"]["queryText"],
-                config=ai_config,
-            )
-            
-            # 🛑 修正二：改為 response.text
-            info = response.text 
-            
-        except Exception as e:
-            info = f"不好意思，我的 AI 腦袋稍微卡住了，錯誤原因：{str(e)}"
+        info += result
 
-    # 🛑 修正三：else 必須是所有條件判斷的「最後一道防線」
-    else:
-        info += "我不太明白您的意思，您可以試試說「我想查普遍級電影」或「查詢片名有超人的電影」。"
+    elif (action == "input.unknown"):
+        #info =  req["queryResult"]["queryText"]
 
-    # 4. 回傳 JSON 給 Dialogflow
+        # 2. 建立設定物件，設定你希望限制的最大 Token 數（例如 500）
+        ai_config = types.GenerateContentConfig(
+            max_output_tokens = 500
+        )
+
+
+        # 每次使用者拜訪該路徑時，直接使用全域的 client 呼叫模型
+        response = client.models.generate_content(
+            model='gemini-3.5-flash',
+            contents=req["queryResult"]["queryText"],
+            config=ai_config,
+        )
+        
+        # 回傳生成的文字
+        info = response.text
+
+
     return make_response(jsonify({"fulfillmentText": info}))
 
+
 @app.route("/demo")
+
 def demo():
     return render_template("demo.html")
 
+
 @app.route("/AI")
+
 def AI():
+
     # 每次使用者拜訪該路徑時，直接使用全域的 client 呼叫模型
+
     response = client.models.generate_content(
         model='gemini-3.5-flash',
         contents='我想查詢靜宜大學資管系的評價？',
     )
-    
-    # 回傳生成的文字
+
     return response.text
 
 @app.route('/ask', methods=['GET', 'POST']) 
