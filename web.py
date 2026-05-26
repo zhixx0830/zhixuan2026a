@@ -371,92 +371,36 @@ def rate():
         doc_ref.set(doc)
     return "本週新片已爬蟲及存檔完畢，網站最近更新日期為：" + lastUpdate
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    # 1. 取得 Dialogflow 的請求內容
-    req = request.get_json(force=True)
-    query_result = req.get("queryResult")
-    action = query_result.get("action")
-   
-    # 初始化回傳訊息開頭
-    info = "我是許芷嫙設計的電影聊天機器人。\n"
-    db = firestore.client()
-
-    # --- 動作 A：根據「分級」查詢電影 ---
-    if action == "rateChoice":
-        rate = query_result.get("parameters").get("rate")
-        info += f"您選擇查詢的分級是：{rate}\n\n"
-       
-        # 搜尋資料庫中符合該分級的電影
-        collection_ref = db.collection("本週新片含分級")
-        # 使用 where 進行精準篩選
-        docs = collection_ref.where(filter=FieldFilter("rate", "==", rate)).get()
-       
-        found = False
-        for doc in docs:
-            found = True
-            m = doc.to_dict()
-            info += f"🎬【{m['title']}】\n"
-            info += f"📅 上映日期：{m['showDate']}\n"
-            info += f"🔗 介紹：{m['hyperlink']}\n\n"
-       
-        if not found:
-            info += f"很抱歉，目前找不到標記為「{rate}」的新片喔。"
-
-    # --- 動作 B：根據「關鍵字」查詢特定欄位 (片名/分級/日期) ---
-    elif action == "MovieDetail":
-        params = query_result.get("parameters")
-        question = params.get("filmq")  # 使用者想查的欄位，如：片名、分級
-        keyword = params.get("any")     # 使用者輸入的關鍵字，如：超人
-       
-        info += f"您要查詢電影的 {question}，關鍵字是：{keyword}\n\n"
-
-        # 欄位映射對照表
-        mapping = {
-            "片名": "title",
-            "分級": "rate",
-            "上映日期": "showDate",
-            "介紹": "introduce"
-        }
-        target_field = mapping.get(question, "title")
-
-        collection_ref = db.collection("本週新片含分級")
-        docs = collection_ref.get()
-       
-        found = False
-        for doc in docs:
-            m = doc.to_dict()
-            # 模糊搜尋：關鍵字是否出現在該欄位中
-            if keyword in str(m.get(target_field, "")):
-                found = True
-                info += f"🎬 片名：{m['title']}\n"
-                info += f"🎥 分級：{m['rate']}\n"
-                info += f"⏳ 片長：{m['showLength']} 分鐘\n"
-                info += f"📅 上映日期：{m['showDate']}\n"
-                info += f"🔗 介紹網址：{m['hyperlink']}\n\n"
-       
+# ... (前面 MovieDetail 的程式碼保持不變) ...
+        
         if not found:
             info += f"在【{question}】中找不到包含「{keyword}」的電影。"
 
-    # 若 action 都不符合
-    else:
-        info += "我不太明白您的意思，您可以試試說「我想查普遍級電影」或「查詢片名有超人的電影」"
-
-    elif (action == "input.unknown"):
-        #info =  req["queryResult"]["queryText"]
-
-        ai_config = types.GenerateContentConfig(
-        max_output_tokens = 500
-        )
-
-
-        response = client.models.generate_content(
-            model = 'gemini-3.5-flash',
-            contents = req["queryResult"]["queryText"],
-            config=ai_config,
+    # 🛑 修正一：把 input.unknown 的 elif 移到 else 的前面
+    elif action == "input.unknown":
+        # 加入 try...except 來防止 AI 呼叫失敗時整個機器人當機
+        try:
+            ai_config = types.GenerateContentConfig(
+                max_output_tokens = 500
             )
 
-        info = request.text
+            response = client.models.generate_content(
+                model = 'gemini-3.5-flash',
+                contents = req["queryResult"]["queryText"],
+                config=ai_config,
+            )
+            
+            # 🛑 修正二：改為 response.text
+            info = response.text 
+            
+        except Exception as e:
+            info = f"不好意思，我的 AI 腦袋稍微卡住了，錯誤原因：{str(e)}"
+
+    # 🛑 修正三：else 必須是所有條件判斷的「最後一道防線」
+    else:
+        info += "我不太明白您的意思，您可以試試說「我想查普遍級電影」或「查詢片名有超人的電影」。"
+
+    # 4. 回傳 JSON 給 Dialogflow
     return make_response(jsonify({"fulfillmentText": info}))
 
 @app.route("/demo")
