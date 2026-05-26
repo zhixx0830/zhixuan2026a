@@ -9,6 +9,7 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 from flask import Flask, render_template, request, make_response, jsonify
 from google import genai
 
+from google.genai import types
 # 判斷是在 Vercel 還是本地
 if os.path.exists('serviceAccountKey.json'):
     # 本地環境：讀取檔案
@@ -442,8 +443,20 @@ def webhook():
         info += "我不太明白您的意思，您可以試試說「我想查普遍級電影」或「查詢片名有超人的電影」"
 
     elif (action == "input.unknown"):
-        info =  req["queryResult"]["queryText"]
+        #info =  req["queryResult"]["queryText"]
 
+        ai_config = types.GenerateContentConfig(
+        max_output_tokens = 500
+        )
+
+
+        response = client.models.generate_content(
+            model = 'gemini-3.5-flash',
+            contents = req["queryResult"]["queryText"],
+            config=ai_config,
+            )
+
+        info = request.text
     return make_response(jsonify({"fulfillmentText": info}))
 
 @app.route("/demo")
